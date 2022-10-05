@@ -8,6 +8,7 @@
 #define LINES_WTS 3 //number of lines for weights
 #define INPUT_WTS 3 //number of weights per line
 #define IN_FILE "XOR-data.txt"  //input data (i.e. patterns) file
+#define OUT_FILE "Error-data.txt"
 
 
 #define NUMPAT 4 //number of patterns
@@ -22,19 +23,19 @@ float input_data[LINES][INPUTS];
 float weight_data[NUMHID][NUMIN];
 float targets[LINES];
 
-
 float Targets[NUMPAT][NUMOUT]; //same as targets array, but modified to work with network
 float hidden[NUMPAT][NUMHID+1];
 float deltaO[NUMOUT];
 float weightsIH[NUMIN][NUMHID], weightsHO[NUMHID+1][NUMOUT];
 float output[NUMPAT][NUMOUT];
 
+
 //function for back propagation learning algorithm
 void bp_learning(int p, float LearnRate, int numInputs, int numHidden, int numOutputs)
 {
     int i, k;
-    float sumDOW[numHidden+1], deltaH[numHidden+1];
-    float deltaWeightIH[numInputs][numHidden], deltaWeightHO[numHidden+1][numOutputs];
+	float *sumDOW,*deltaH;
+    float deltaWeightIH[numInputs][numHidden],deltaWeightHO[numHidden+1][numOutputs];
 
 
     for (k = 0; k < numOutputs; k++) {
@@ -49,10 +50,12 @@ void bp_learning(int p, float LearnRate, int numInputs, int numHidden, int numOu
         }
 
     for (i = 0; i < numHidden+1; i++) {
+		sumDOW=malloc(i*sizeof(float));
         sumDOW[i] = 0.0;
     }
     for (i = 0; i < numHidden+1; i++) {
-        deltaH[i] = 0.0;
+		deltaH=malloc(i*sizeof(float)); 
+        deltaH[i]= 0.0;
     }
 
     //back-propagate errors to hidden layer
@@ -80,6 +83,8 @@ void bp_learning(int p, float LearnRate, int numInputs, int numHidden, int numOu
             //printf("\nnew weightsHO[%d][%d] = %f", i, k, weightsHO[i][k]);
         }
     }
+	free(deltaH);
+	free(sumDOW);
 }//end of bp_learning()
 
 //function to report accuracy of network
@@ -131,7 +136,12 @@ void simulate_net()
     float error, LearnRate = 0.7, acc;
     float sumH[numPatterns][numHidden];
     float sumO[numPatterns][numOutputs];
-
+	FILE *out;
+	out= fopen(OUT_FILE,"wt");
+	
+	if (out == NULL) {
+        printf("Error while opening the outputs data file.\n");
+    }
 
     for (k = 0; k < numHidden; k++) {
         for (i = 0; i < numInputs; i++) {
@@ -186,14 +196,16 @@ void simulate_net()
                 //printf("\ndeltaO: %f", deltaO[k]);
             }
             //printf("\nepoch %-5d :  Error = %f", epoch, error);
+			//fprintf(out,"\nepoch %-5d :  Error = %f", epoch, error);
             bp_learning(p, LearnRate, numInputs, numHidden, numOutputs); //function for back propagation learning algorithm
         }//end of training patterns
 
         if (error < 0.05) { //stop learning if error is less than 0.05
             break;
         }
-
+		fprintf(out, "\n%f", error);
     }//end of epoch
+	fclose(out);
 
     acc = report_accuracy(numPatterns, numOutputs);
 
@@ -274,7 +286,7 @@ void read_input_data()
 
 int main()
 {
-    read_input_data();        //call function to read XOR data file contents
+    read_input_data(); //call function to read XOR data file contents and write data in file
     simulate_net();           //call function to simulate network
     return 0;
 }
